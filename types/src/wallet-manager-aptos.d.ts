@@ -2,7 +2,7 @@ export default class WalletManagerAptos extends WalletManager {
     /**
      * Creates a new wallet manager for the aptos blockchain.
      *
-     * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed.
+     * @param {string | Uint8Array} seed - A [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
      * @param {AptosWalletConfig} [config] - The configuration object.
      */
     constructor(seed: string | Uint8Array, config?: AptosWalletConfig);
