@@ -297,7 +297,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
   async toReadOnlyAccount () {
     const address = await this.getAddress()
 
-    return new WalletAccountReadOnlyAptos(address, this._config, this._publicKey)
+    return new WalletAccountReadOnlyAptos(address, { ...this._config, provider: this._rpc }, this._publicKey)
   }
 
   /**

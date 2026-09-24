@@ -40,6 +40,15 @@ export function toGasPrice(value: unknown): bigint | null;
  */
 export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly implements IWalletAccountReadOnly {
     /**
+     * Builds the Aptos REST client from the wallet configuration: a url (or list of urls, for
+     * failover), or an already-built `AptosRpc` reused as-is.
+     *
+     * @protected
+     * @param {AptosWalletConfig} [config] - The configuration object.
+     * @returns {AptosRpc | undefined} The rpc client, or undefined if none is configured.
+     */
+    protected static _buildRpc(config?: AptosWalletConfig): AptosRpc | undefined;
+    /**
      * Creates a new aptos read-only wallet account.
      *
      * @param {string} address - The account's address.
@@ -224,9 +233,9 @@ export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTr
 export type TransactionReceipt = import("@tetherto/wdk-wallet").TransactionReceipt;
 export type AptosWalletConfig = {
     /**
-     * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
+     * - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"), or an already-built `AptosRpc` client. An array of urls enables failover. An already-built client is reused as-is, which lets a manager share a single client across all the accounts it creates.
      */
-    provider?: string | string[];
+    provider?: string | AptosRpc | string[];
     /**
      * - The chain id (mainnet: 1, testnet: 2). Fetched from the ledger info on first use if omitted.
      */

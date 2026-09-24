@@ -16,12 +16,12 @@
 
 import WalletManager from '@tetherto/wdk-wallet'
 
-import AptosRpc from './aptos-rpc.js'
 import WalletAccountAptos from './wallet-account-aptos.js'
 import { toGasPrice } from './wallet-account-read-only-aptos.js'
 
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 
+/** @typedef {import('./aptos-rpc.js').default} AptosRpc */
 /** @typedef {import('./wallet-account-read-only-aptos.js').AptosWalletConfig} AptosWalletConfig */
 
 // The fee-rate multiplier (in basis points / 100) applied to the standard gas
@@ -51,20 +51,13 @@ export default class WalletManagerAptos extends WalletManager {
     this._config = config
 
     /**
-     * The Aptos REST client.
+     * The Aptos REST client. Shared with every account this manager creates, so two accounts
+     * never open two clients for the same endpoint.
      *
      * @protected
      * @type {AptosRpc | undefined}
      */
-    this._rpc = undefined
-
-    // An empty provider array is truthy but has no endpoints, so guard against
-    // it explicitly rather than constructing a failover with nothing to fail over to.
-    const provider = config.provider
-    const hasProvider = Array.isArray(provider) ? provider.length > 0 : Boolean(provider)
-    if (hasProvider) {
-      this._rpc = new AptosRpc(provider, { retries: config.retries ?? 3 })
-    }
+    this._rpc = WalletAccountAptos._buildRpc(config)
   }
 
   /**
@@ -96,10 +89,21 @@ export default class WalletManagerAptos extends WalletManager {
     // Derivation is synchronous; WalletAccountAptos.at only wraps the
     // constructor in a promise for interface parity.
     if (!this._accounts[path]) {
-      this._accounts[path] = new WalletAccountAptos(this.seed, path, this._config)
+      this._accounts[path] = new WalletAccountAptos(this.seed, path, this._accountConfig())
     }
 
     return this._accounts[path]
+  }
+
+  /**
+   * Builds the account config, injecting the manager's shared rpc client so accounts reuse
+   * it instead of opening their own.
+   *
+   * @private
+   * @returns {AptosWalletConfig} The account configuration.
+   */
+  _accountConfig () {
+    return { ...this._config, provider: this._rpc }
   }
 
   /**

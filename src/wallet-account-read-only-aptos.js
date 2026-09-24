@@ -40,7 +40,7 @@ import {
 
 /**
  * @typedef {Object} AptosWalletConfig
- * @property {string | string[]} [provider] - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"). An array enables failover.
+ * @property {string | AptosRpc | Array<string>} [provider] - The Aptos fullnode REST url (e.g. "https://fullnode.mainnet.aptoslabs.com/v1"), or an already-built `AptosRpc` client. An array of urls enables failover. An already-built client is reused as-is, which lets a manager share a single client across all the accounts it creates.
  * @property {number} [chainId] - The chain id (mainnet: 1, testnet: 2). Fetched from the ledger info on first use if omitted.
  * @property {number} [retries] - The number of failover retry attempts if 'provider' is a list of urls (default: 3).
  * @property {number} [txnExpirationSecs] - The transaction expiration window in seconds from now (default: 60).
@@ -140,15 +140,7 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
      * @protected
      * @type {AptosRpc | undefined}
      */
-    this._rpc = undefined
-
-    // An empty provider array is truthy but has no endpoints, so guard against
-    // it explicitly rather than constructing a failover with nothing to fail over to.
-    const provider = config.provider
-    const hasProvider = Array.isArray(provider) ? provider.length > 0 : Boolean(provider)
-    if (hasProvider) {
-      this._rpc = new AptosRpc(provider, { retries: config.retries ?? 3 })
-    }
+    this._rpc = WalletAccountReadOnlyAptos._buildRpc(config)
 
     /**
      * The cached chain id.
@@ -166,6 +158,28 @@ export default class WalletAccountReadOnlyAptos extends WalletAccountReadOnly {
      * @type {number}
      */
     this._txnExpirationSecs = config.txnExpirationSecs ?? DEFAULT_TXN_EXPIRATION_SECS
+  }
+
+  /**
+   * Builds the Aptos REST client from the wallet configuration: a url (or list of urls, for
+   * failover), or an already-built `AptosRpc` reused as-is.
+   *
+   * @protected
+   * @param {AptosWalletConfig} [config] - The configuration object.
+   * @returns {AptosRpc | undefined} The rpc client, or undefined if none is configured.
+   */
+  static _buildRpc (config = {}) {
+    const { provider, retries = 3 } = config
+
+    if (provider instanceof AptosRpc) {
+      return provider
+    }
+
+    // An empty provider array is truthy but has no endpoints, so guard against
+    // it explicitly rather than constructing a failover with nothing to fail over to.
+    const hasProvider = Array.isArray(provider) ? provider.length > 0 : Boolean(provider)
+
+    return hasProvider ? new AptosRpc(provider, { retries }) : undefined
   }
 
   /**

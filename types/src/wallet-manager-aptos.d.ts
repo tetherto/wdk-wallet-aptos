@@ -41,6 +41,14 @@ export default class WalletManagerAptos extends WalletManager {
      * @returns {Promise<WalletAccountAptos>} The account.
      */
     getAccountByPath(path: string): Promise<WalletAccountAptos>;
+    /**
+     * Builds the account config, injecting the manager's shared rpc client so accounts reuse
+     * it instead of opening their own.
+     *
+     * @private
+     * @returns {AptosWalletConfig} The account configuration.
+     */
+    private _accountConfig;
 }
 export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
 export type AptosWalletConfig = import("./wallet-account-read-only-aptos.js").AptosWalletConfig;
