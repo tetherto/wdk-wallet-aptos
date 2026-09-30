@@ -6,7 +6,7 @@
 
 **Note**: This package is currently in beta. Please test thoroughly in development environments before using in production.
 
-A simple and secure package to manage SLIP-0010 HD wallets for the Aptos blockchain. This package provides a clean API for creating, managing, and interacting with Aptos wallets using BIP-39 seed phrases and ed25519 (SLIP-0010) key derivation.
+An [Aptos wallet module](https://docs.wdk.tether.io/sdk/wallet-modules/wallet-aptos/) for WDK (Wallet Development Kit) by Tether. This package provides a clean API for creating, managing, and interacting with Aptos wallets using BIP-39 seed phrases and ed25519 (SLIP-0010) key derivation.
 
 ## About WDK
 
