@@ -14,7 +14,7 @@
 
 'use strict'
 
-import WalletManager from '@tetherto/wdk-wallet'
+import WalletManager, { DisposalError } from '@tetherto/wdk-wallet'
 
 import WalletAccountAptos from './wallet-account-aptos.js'
 import { toGasPrice } from './wallet-account-read-only-aptos.js'
@@ -68,6 +68,7 @@ export default class WalletManagerAptos extends WalletManager {
    * const account = await wallet.getAccount(1);
    * @param {number} [index] - The index of the account to get (default: 0).
    * @returns {Promise<WalletAccountAptos>} The account.
+   * @throws {DisposalError} If the wallet manager has been disposed.
    */
   async getAccount (index = 0) {
     return this.getAccountByPath(`${index}'/0'/0'`)
@@ -81,8 +82,13 @@ export default class WalletManagerAptos extends WalletManager {
    * const account = await wallet.getAccountByPath("0'/0'/1'");
    * @param {string} path - The derivation path (e.g. "0'/0'/0'").
    * @returns {Promise<WalletAccountAptos>} The account.
+   * @throws {DisposalError} If the wallet manager has been disposed.
    */
   async getAccountByPath (path) {
+    if (this.disposed) {
+      throw new DisposalError('The wallet manager has been disposed.')
+    }
+
     // Construct and cache synchronously, before any await yields the event
     // loop, so concurrent calls for the same path share one account rather than
     // each deriving an orphaned key the disposal sweep would never zero.

@@ -21,6 +21,14 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      * @type {Uint8Array | undefined}
      */
     private _privateKey;
+    /** @private */
+    private _disposed;
+    /**
+     * True if the account has been disposed.
+     *
+     * @type {boolean}
+     */
+    get disposed(): boolean;
     /**
      * The derivation path's index of this account.
      *
@@ -44,6 +52,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {string} message - The message to sign.
      * @returns {Promise<string>} The message's signature (hex).
+     * @throws {DisposalError} If the account has been disposed.
      */
     sign(message: string): Promise<string>;
     /**
@@ -53,6 +62,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {AptosTransaction} tx - The native APT transaction to sign.
      * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
+     * @throws {DisposalError} If the account has been disposed.
      */
     signTransaction(tx: AptosTransaction): Promise<SignedTransaction>;
     /**
@@ -60,6 +70,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {AptosTransaction} tx - The transaction.
      * @returns {Promise<TransactionResult>} The transaction's result.
+     * @throws {DisposalError} If the account has been disposed.
      */
     sendTransaction(tx: AptosTransaction): Promise<TransactionResult>;
     /**
@@ -67,6 +78,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {TransferOptions} options - The transfer's options.
      * @returns {Promise<TransferResult>} The transfer's result.
+     * @throws {DisposalError} If the account has been disposed.
      */
     transfer(options: TransferOptions): Promise<TransferResult>;
     /**
