@@ -24,6 +24,8 @@ import * as bip39 from 'bip39'
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 
+import { DisposalError } from '@tetherto/wdk-wallet'
+
 import WalletAccountReadOnlyAptos, { deriveAddress } from './wallet-account-read-only-aptos.js'
 import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
 
@@ -179,6 +181,18 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
      * @type {Uint8Array | undefined}
      */
     this._privateKey = privateKey
+
+    /** @private */
+    this._disposed = false
+  }
+
+  /**
+   * True if the account has been disposed.
+   *
+   * @type {boolean}
+   */
+  get disposed () {
+    return this._disposed
   }
 
   /**
@@ -218,10 +232,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {string} message - The message to sign.
    * @returns {Promise<string>} The message's signature (hex).
+   * @throws {DisposalError} If the account has been disposed.
    */
   async sign (message) {
-    if (!this._privateKey) {
-      throw new Error('The wallet account has been disposed.')
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
     }
 
     const signature = ed25519.sign(new TextEncoder().encode(message), this._privateKey)
@@ -236,10 +251,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {AptosTransaction} tx - The native APT transaction to sign.
    * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
+   * @throws {DisposalError} If the account has been disposed.
    */
   async signTransaction (tx) {
-    if (!this._privateKey) {
-      throw new Error('The wallet account has been disposed.')
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
     }
 
     if (!this._rpc) {
@@ -256,10 +272,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {AptosTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
+   * @throws {DisposalError} If the account has been disposed.
    */
   async sendTransaction (tx) {
-    if (!this._privateKey) {
-      throw new Error('The wallet account has been disposed.')
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
     }
 
     if (!this._rpc) {
@@ -274,10 +291,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
+   * @throws {DisposalError} If the account has been disposed.
    */
   async transfer (options) {
-    if (!this._privateKey) {
-      throw new Error('The wallet account has been disposed.')
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
     }
 
     if (!this._rpc) {
@@ -304,11 +322,15 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * Disposes the wallet account, erasing the private key from the memory.
    */
   dispose () {
+    if (this._disposed) return
+
     if (this._privateKey) {
       sodium_memzero(this._privateKey)
     }
 
     this._privateKey = undefined
+
+    this._disposed = true
   }
 
   /**

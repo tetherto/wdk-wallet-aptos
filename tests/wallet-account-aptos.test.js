@@ -4,6 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { hexToBytes } from '@noble/hashes/utils'
 
+import { DisposalError } from '@tetherto/wdk-wallet'
+
 import WalletAccountAptos from '../src/wallet-account-aptos.js'
 import WalletAccountReadOnlyAptos from '../src/wallet-account-read-only-aptos.js'
 
@@ -92,7 +94,7 @@ describe('WalletAccountAptos', () => {
     it('throws when signing after disposal', async () => {
       account.dispose()
 
-      await expect(account.sign('x')).rejects.toThrow('disposed')
+      await expect(account.sign('x')).rejects.toThrow(DisposalError)
     })
   })
 
@@ -118,10 +120,21 @@ describe('WalletAccountAptos', () => {
       expect(account.keyPair.privateKey).toBeUndefined()
     })
 
-    it('is safe to call twice', () => {
+    it('exposes the disposed state', () => {
+      expect(account.disposed).toBe(false)
+
       account.dispose()
 
-      expect(() => account.dispose()).not.toThrow()
+      expect(account.disposed).toBe(true)
+    })
+
+    it('throws DisposalError from signing methods once disposed', async () => {
+      account.dispose()
+
+      await expect(account.sign('x')).rejects.toThrow(DisposalError)
+      await expect(account.signTransaction({ to: RECIPIENT, value: 1n })).rejects.toThrow(DisposalError)
+      await expect(account.sendTransaction({ to: RECIPIENT, value: 1n })).rejects.toThrow(DisposalError)
+      await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1n })).rejects.toThrow(DisposalError)
     })
   })
 
