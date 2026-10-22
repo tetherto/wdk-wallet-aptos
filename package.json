@@ -1,6 +1,6 @@
 {
   "name": "@tetherto/wdk-wallet-aptos",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "Aptos wallet module for WDK (Wallet Development Kit) by Tether with SLIP-0010 key derivation.",
   "homepage": "https://docs.wdk.tether.io/sdk/wallet-modules/wallet-aptos/",
   "keywords": [
