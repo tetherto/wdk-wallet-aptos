@@ -78,6 +78,9 @@ const MAX_GAS_BUFFER = 2n
 // (e.g. for an account that cannot cover the fee).
 const DEFAULT_MAX_GAS_AMOUNT = 100000n
 
+// The maximum fee (in octas, 0.1 APT) enforced when no max fee is configured.
+const DEFAULT_MAX_FEE = 10_000_000n
+
 /**
  * Asserts that a user-supplied derivation path is exactly three hardened
  * index segments with no leading zeros (the module prepends m/44'/637', so a
@@ -246,7 +249,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       throw new Error('The wallet must be connected to a provider to sign transactions.')
     }
 
-    const { signedTransaction } = await this._buildSignedTransaction(this._buildNativeTransferPayload(tx.to, tx.value))
+    const { signedTransaction } = await this._buildSignedTransaction(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee)
 
     return signedTransaction
   }
@@ -266,7 +269,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       throw new Error('The wallet must be connected to a provider to send transactions.')
     }
 
-    return this._submit(this._buildNativeTransferPayload(tx.to, tx.value))
+    return this._submit(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee)
   }
 
   /**
@@ -359,30 +362,30 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
   /**
    * Simulates a payload once and signs it, deriving `max_gas_amount` from the
    * simulated usage (with a safety buffer) and `gas_unit_price` from the same
-   * simulation. Optionally enforces a maximum fee.
+   * simulation. Enforces a maximum fee.
    *
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
    * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
    */
-  async _buildSignedTransaction (payload, maxFee) {
+  async _buildSignedTransaction (payload, maxFee = DEFAULT_MAX_FEE) {
     const simulation = await this._simulate(payload)
     const gasUsed = BigInt(simulation.gas_used)
     const gasUnitPrice = BigInt(simulation.gas_unit_price)
     const fee = gasUsed * gasUnitPrice
 
-    if (maxFee !== undefined && fee >= BigInt(maxFee)) {
-      throw new Error('Exceeded maximum fee cost for transfer operation.')
+    if (fee >= BigInt(maxFee)) {
+      throw new Error('Exceeded maximum fee cost.')
     }
 
     let maxGasAmount = gasUsed > 0n ? gasUsed * MAX_GAS_BUFFER : DEFAULT_MAX_GAS_AMOUNT
 
     // The buffered max_gas_amount could let the on-chain fee reach
     // maxGasAmount * gasUnitPrice, which may exceed maxFee even though the
-    // simulated fee did not. When a maxFee is set, cap max_gas_amount so the
-    // worst-case fee cannot exceed it.
-    if (maxFee !== undefined && gasUnitPrice > 0n) {
+    // simulated fee did not. Cap max_gas_amount so the worst-case fee cannot
+    // exceed it.
+    if (gasUnitPrice > 0n) {
       const maxGasForFee = BigInt(maxFee) / gasUnitPrice
       if (maxGasForFee < maxGasAmount) {
         maxGasAmount = maxGasForFee
@@ -399,7 +402,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
   async _submit (payload, maxFee) {
