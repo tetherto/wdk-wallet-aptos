@@ -4,6 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { hexToBytes } from '@noble/hashes/utils'
 
+import { MaximumFeeExceededError } from '@tetherto/wdk-wallet'
+
 import WalletAccountAptos from '../src/wallet-account-aptos.js'
 import WalletAccountReadOnlyAptos from '../src/wallet-account-read-only-aptos.js'
 
@@ -159,7 +161,7 @@ describe('WalletAccountAptos', () => {
       mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' }) // fee = 10000
 
       await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
-        .rejects.toThrow('Exceeded maximum fee')
+        .rejects.toThrow(MaximumFeeExceededError)
     })
 
     it('caps max_gas_amount so the worst-case fee cannot exceed transferMaxFee', async () => {
@@ -300,7 +302,7 @@ describe('WalletAccountAptos', () => {
         account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10n })
         mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
 
-        await expect(account.sendTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
+        await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
         expect(submitted).toBe(false)
       })
 
@@ -339,7 +341,7 @@ describe('WalletAccountAptos', () => {
       it('rejects an excessive gas price in sendTransaction', async () => {
         mockSimulateAndSubmit(EXPENSIVE)
 
-        await expect(account.sendTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
+        await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
         expect(submitted).toBe(false)
       })
 

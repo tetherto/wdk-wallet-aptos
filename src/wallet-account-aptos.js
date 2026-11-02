@@ -24,6 +24,8 @@ import * as bip39 from 'bip39'
 // eslint-disable-next-line camelcase
 import { sodium_memzero } from 'sodium-universal'
 
+import { MaximumFeeExceededError } from '@tetherto/wdk-wallet'
+
 import WalletAccountReadOnlyAptos, { deriveAddress } from './wallet-account-read-only-aptos.js'
 import { encodeRawTransaction, buildSigningMessage } from './transaction.js'
 
@@ -368,6 +370,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @param {EntryFunctionPayload} payload - The payload descriptor.
    * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
    * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
+   * @throws {MaximumFeeExceededError} If the estimated fee exceeds the maximum fee.
    */
   async _buildSignedTransaction (payload, maxFee = DEFAULT_MAX_FEE) {
     const simulation = await this._simulate(payload)
@@ -376,7 +379,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
     const fee = gasUsed * gasUnitPrice
 
     if (fee >= BigInt(maxFee)) {
-      throw new Error('Exceeded maximum fee cost.')
+      throw new MaximumFeeExceededError('Exceeded maximum fee cost.')
     }
 
     let maxGasAmount = gasUsed > 0n ? gasUsed * MAX_GAS_BUFFER : DEFAULT_MAX_GAS_AMOUNT
