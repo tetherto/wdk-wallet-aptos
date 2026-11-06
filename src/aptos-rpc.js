@@ -221,6 +221,17 @@ export default class AptosRpc {
 }
 
 /**
+ * Returns the length in bytes of the UTF-8 encoding of a string, without Buffer or
+ * TextEncoder, so it works on both Node.js and Bare.
+ *
+ * @param {string} value - The string.
+ * @returns {number} The byte length.
+ */
+function utf8ByteLength (value) {
+  return encodeURIComponent(value).replace(/%[0-9A-F]{2}/g, 'x').length
+}
+
+/**
  * A single-endpoint Aptos REST client. Wrapped by {@link AptosRpc} which may
  * stack several of these behind a {@link FailoverProvider}.
  *
@@ -257,10 +268,15 @@ class SingleAptosRpc {
    * @returns {Promise<unknown>} The parsed response.
    */
   async post (path, body) {
+    const json = JSON.stringify(body)
+
     const res = await fetch(`${this._baseUrl}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
+      // An explicit content-length: without it, some fetch implementations (e.g. bare-fetch
+      // in the Bare runtime) send the body chunked, which the Aptos Labs fullnode rejects with
+      // "400 - Transfer-Encoding is not supported".
+      headers: { 'content-type': 'application/json', 'content-length': String(utf8ByteLength(json)) },
+      body: json
     })
 
     return this._parse(res)
