@@ -4,6 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals
 
 import { hexToBytes } from '@noble/hashes/utils'
 
+import { MaximumFeeExceededError } from '@tetherto/wdk-wallet'
+
 import WalletAccountAptos from '../src/wallet-account-aptos.js'
 import WalletAccountReadOnlyAptos from '../src/wallet-account-read-only-aptos.js'
 
@@ -159,7 +161,7 @@ describe('WalletAccountAptos', () => {
       mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' }) // fee = 10000
 
       await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
-        .rejects.toThrow('Exceeded maximum fee')
+        .rejects.toThrow(MaximumFeeExceededError)
     })
 
     it('caps max_gas_amount so the worst-case fee cannot exceed transferMaxFee', async () => {
@@ -291,6 +293,80 @@ describe('WalletAccountAptos', () => {
       expect(signed.payload.arguments).toEqual([RECIPIENT, '100000'])
       expect(signed.signature.public_key).toBe(`0x${PUBLIC_KEY}`)
       expect(signed.signature.signature).toMatch(/^0x[0-9a-f]{128}$/)
+    })
+
+    describe('transactionMaxFee', () => {
+      const TX = { to: RECIPIENT, value: 100000n }
+
+      it('is enforced by sendTransaction', async () => {
+        account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10n })
+        mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
+
+        await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
+        expect(submitted).toBe(false)
+      })
+
+      it('is enforced by signTransaction', async () => {
+        account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10n })
+        mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
+
+        await expect(account.signTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
+      })
+
+      it('caps max_gas_amount so the worst-case fee cannot exceed it', async () => {
+        account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 15000n })
+        mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
+
+        await account.sendTransaction(TX)
+
+        expect(submittedBody.max_gas_amount).toBe('150')
+      })
+
+      it('does not apply to transfers, which use transferMaxFee', async () => {
+        account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10n })
+        mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' })
+
+        const result = await account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n })
+
+        expect(result.hash).toBe('0xdeadbeef')
+      })
+    })
+
+    describe('default max fee', () => {
+      const TX = { to: RECIPIENT, value: 100000n }
+
+      // gas_used 1000 at 100_000 octas per unit costs 100_000_000 octas, above the 0.1 APT default.
+      const EXPENSIVE = { gasUsed: 1000, gasUnitPrice: 100_000, hash: '0xfeed' }
+
+      it('rejects an excessive gas price in sendTransaction', async () => {
+        mockSimulateAndSubmit(EXPENSIVE)
+
+        await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
+        expect(submitted).toBe(false)
+      })
+
+      it('rejects an excessive gas price in signTransaction', async () => {
+        mockSimulateAndSubmit(EXPENSIVE)
+
+        await expect(account.signTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
+      })
+
+      it('rejects an excessive gas price in transfer', async () => {
+        mockSimulateAndSubmit(EXPENSIVE)
+
+        await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
+          .rejects.toThrow('Exceeded maximum fee cost.')
+        expect(submitted).toBe(false)
+      })
+
+      it('caps max_gas_amount when the simulation reports no gas usage', async () => {
+        // The fallback max_gas_amount (100000) at 1000 octas per unit would allow a 100_000_000 octas fee.
+        mockSimulateAndSubmit({ gasUsed: 0, gasUnitPrice: 1000, hash: '0xfeed' })
+
+        await account.sendTransaction(TX)
+
+        expect(submittedBody.max_gas_amount).toBe('10000')
+      })
     })
   })
 

@@ -92,11 +92,11 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
     /**
      * Simulates a payload once and signs it, deriving `max_gas_amount` from the
      * simulated usage (with a safety buffer) and `gas_unit_price` from the same
-     * simulation. Optionally enforces a maximum fee.
+     * simulation. Enforces a maximum fee.
      *
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
      * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
      */
     private _buildSignedTransaction;
@@ -105,7 +105,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
      * @returns {Promise<TransactionResult>} The transaction's result.
      */
     private _submit;
