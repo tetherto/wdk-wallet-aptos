@@ -121,6 +121,8 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      * @returns {Promise<TransactionResult>} The transaction's result.
      */
     private _submit;
+    /** @private */
+    private _guardDisposed;
 }
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type KeyPair = import("@tetherto/wdk-wallet").KeyPair;

@@ -235,9 +235,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @throws {DisposalError} If the account has been disposed.
    */
   async sign (message) {
-    if (this.disposed) {
-      throw new DisposalError('The account has been disposed.')
-    }
+    this._guardDisposed()
 
     const signature = ed25519.sign(new TextEncoder().encode(message), this._privateKey)
 
@@ -254,9 +252,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @throws {DisposalError} If the account has been disposed.
    */
   async signTransaction (tx) {
-    if (this.disposed) {
-      throw new DisposalError('The account has been disposed.')
-    }
+    this._guardDisposed()
 
     if (!this._rpc) {
       throw new Error('The wallet must be connected to a provider to sign transactions.')
@@ -275,9 +271,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @throws {DisposalError} If the account has been disposed.
    */
   async sendTransaction (tx) {
-    if (this.disposed) {
-      throw new DisposalError('The account has been disposed.')
-    }
+    this._guardDisposed()
 
     if (!this._rpc) {
       throw new Error('The wallet must be connected to a provider to send transactions.')
@@ -294,9 +288,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    * @throws {DisposalError} If the account has been disposed.
    */
   async transfer (options) {
-    if (this.disposed) {
-      throw new DisposalError('The account has been disposed.')
-    }
+    this._guardDisposed()
 
     if (!this._rpc) {
       throw new Error('The wallet must be connected to a provider to transfer tokens.')
@@ -429,5 +421,12 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
     const { hash } = await this._rpc.submitTransaction(signedTransaction)
 
     return { hash, fee }
+  }
+
+  /** @private */
+  _guardDisposed () {
+    if (this.disposed) {
+      throw new DisposalError('The account has been disposed.')
+    }
   }
 }
