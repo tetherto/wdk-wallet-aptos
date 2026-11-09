@@ -96,7 +96,7 @@ function assertFullHardenedPath (path) {
   }
 
   // Each segment must be a hardened index.
-  const isValid = segments.every((segment) => /^\d*'$/.test(segment))
+  const isValid = segments.every((segment) => /^\d+'$/.test(segment))
 
   if (!isValid) {
     throw new Error('In Aptos, every child path in a derivation path must be a hardened index.')
