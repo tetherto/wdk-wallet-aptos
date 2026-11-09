@@ -80,11 +80,11 @@ const DEFAULT_MAX_GAS_AMOUNT = 100000n
 
 /**
  * Asserts that a user-supplied derivation path is exactly three hardened
- * index segments with no leading zeros (the module prepends m/44'/637', so a
- * spec-compliant Aptos path leaves three segments).
+ * index segments (the module prepends m/44'/637', so a spec-compliant Aptos
+ * path leaves three segments).
  *
  * @param {string} path - The derivation path.
- * @throws {Error} If the path does not have exactly three hardened, leading-zero-free index segments.
+ * @throws {Error} If the path does not have exactly three hardened index segments.
  */
 function assertFullHardenedPath (path) {
   const segments = path.split('/')
@@ -95,12 +95,11 @@ function assertFullHardenedPath (path) {
     throw new Error("In Aptos, the derivation path must have exactly three hardened segments (e.g. \"0'/0'/0'\").")
   }
 
-  // Each segment must be a hardened index with no leading zeros, so that
-  // distinct path strings cannot alias the same derived key (e.g. "00'" vs "0'").
-  const isValid = segments.every((segment) => /^(0|[1-9]\d*)'$/.test(segment))
+  // Each segment must be a hardened index.
+  const isValid = segments.every((segment) => /^\d+'$/.test(segment))
 
   if (!isValid) {
-    throw new Error('In Aptos, every child path in a derivation path must be a hardened index without leading zeros.')
+    throw new Error('In Aptos, every child path in a derivation path must be a hardened index.')
   }
 }
 
@@ -113,6 +112,23 @@ function wipe (bytes) {
   if (bytes) {
     sodium_memzero(bytes)
   }
+}
+
+/**
+ * Normalizes a BIP 0032 derivation path.
+ *
+ * @internal
+ * @param {string} path - A BIP 0032 derivation path.
+ * @returns {string} The resulting normalization.
+ * @throws {Error} If the path does not have exactly three hardened index segments.
+ */
+export function normalizeDerivationPath (path) {
+  assertFullHardenedPath(path)
+
+  // Removes leading zeros from each segment:
+  return path.split('/')
+    .map(segment => segment === 'm' ? segment : `${+segment.slice(0, -1)}'`)
+    .join('/')
 }
 
 /**
@@ -143,9 +159,9 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       ownedSeed = Uint8Array.from(seed)
     }
 
-    assertFullHardenedPath(path)
+    const normalizedPath = normalizeDerivationPath(path)
 
-    const fullPath = `${APTOS_DERIVATION_PATH_PREFIX}/${path}`
+    const fullPath = `${APTOS_DERIVATION_PATH_PREFIX}/${normalizedPath}`
 
     const hdKey = HDKey.fromMasterSeed(ownedSeed)
     const { privateKey } = hdKey.derive(fullPath, true)

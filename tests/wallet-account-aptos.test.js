@@ -32,13 +32,21 @@ describe('WalletAccountAptos', () => {
   })
 
   describe('derivation', () => {
-    it('derives the expected address, public key and private key', () => {
-      const { publicKey, privateKey } = account.keyPair
+    function assertAccount (sut) {
+      expect(sut.path).toBe("m/44'/637'/0'/0'/0'")
+      expect(sut.index).toBe(0)
+      expect(bytesToHex(sut.keyPair.publicKey)).toBe(PUBLIC_KEY)
+      expect(bytesToHex(sut.keyPair.privateKey)).toBe(PRIVATE_KEY)
+    }
 
-      expect(account.path).toBe("m/44'/637'/0'/0'/0'")
-      expect(account.index).toBe(0)
-      expect(bytesToHex(publicKey)).toBe(PUBLIC_KEY)
-      expect(bytesToHex(privateKey)).toBe(PRIVATE_KEY)
+    it('derives the expected address, public key and private key', () => {
+      assertAccount(account)
+    })
+
+    it('accepts derivation paths with leading zeros', () => {
+      const accountWithLeadingZeros = new WalletAccountAptos(SEED_PHRASE, "00'/000'/0000'")
+
+      assertAccount(accountWithLeadingZeros)
     })
 
     it('throws on a non-hardened path', () => {
@@ -53,11 +61,6 @@ describe('WalletAccountAptos', () => {
 
     it('rejects a non-numeric path segment', () => {
       expect(() => new WalletAccountAptos(SEED_PHRASE, "0'/x'/0'")).toThrow('hardened index')
-    })
-
-    it('rejects leading-zero index segments that would alias another path', () => {
-      expect(() => new WalletAccountAptos(SEED_PHRASE, "00'/0'/0'")).toThrow('leading zeros')
-      expect(() => new WalletAccountAptos(SEED_PHRASE, "0'/01'/0'")).toThrow('leading zeros')
     })
 
     it('throws on an invalid seed phrase', () => {

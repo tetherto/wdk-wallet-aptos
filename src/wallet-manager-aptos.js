@@ -16,7 +16,7 @@
 
 import WalletManager from '@tetherto/wdk-wallet'
 
-import WalletAccountAptos from './wallet-account-aptos.js'
+import WalletAccountAptos, { normalizeDerivationPath } from './wallet-account-aptos.js'
 import { toGasPrice } from './wallet-account-read-only-aptos.js'
 
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
@@ -83,16 +83,20 @@ export default class WalletManagerAptos extends WalletManager {
    * @returns {Promise<WalletAccountAptos>} The account.
    */
   async getAccountByPath (path) {
+    // By redundantly normalizing the derivation path before constructing the wallet account, we can avoid any
+    // duplicates in the account cache:
+    const normalizedPath = normalizeDerivationPath(path)
+
     // Construct and cache synchronously, before any await yields the event
     // loop, so concurrent calls for the same path share one account rather than
     // each deriving an orphaned key the disposal sweep would never zero.
     // Derivation is synchronous; WalletAccountAptos.at only wraps the
     // constructor in a promise for interface parity.
-    if (!this._accounts[path]) {
-      this._accounts[path] = new WalletAccountAptos(this.seed, path, this._accountConfig())
+    if (!this._accounts[normalizedPath]) {
+      this._accounts[normalizedPath] = new WalletAccountAptos(this.seed, normalizedPath, this._accountConfig())
     }
 
-    return this._accounts[path]
+    return this._accounts[normalizedPath]
   }
 
   /**
