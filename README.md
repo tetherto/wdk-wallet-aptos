@@ -45,7 +45,8 @@ const seedPhrase =
 // Create wallet manager with provider config (provider is required for chain ops)
 const wallet = new WalletManagerAptos(seedPhrase, {
   provider: 'https://fullnode.mainnet.aptoslabs.com/v1', // any Aptos fullnode REST url
-  transferMaxFee: 100000n, // Optional: max fee in octas (BigInt)
+  transferMaxFee: 100000n, // Optional: max fee in octas for transfers
+  transactionMaxFee: 100000n, // Optional: max fee in octas for sendTransaction and signTransaction
 })
 
 // Get a full access account

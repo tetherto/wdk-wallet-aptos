@@ -252,6 +252,10 @@ export type AptosWalletConfig = {
      * - The maximum allowed fee in octas for transfer operations.
      */
     transferMaxFee?: number | bigint;
+    /**
+     * - The maximum allowed fee in octas for sendTransaction and signTransaction operations.
+     */
+    transactionMaxFee?: number | bigint;
 };
 export type AptosTransaction = {
     /**

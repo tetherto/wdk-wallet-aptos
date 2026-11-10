@@ -45,6 +45,7 @@ import {
  * @property {number} [retries] - The number of failover retry attempts if 'provider' is a list of urls (default: 3).
  * @property {number} [txnExpirationSecs] - The transaction expiration window in seconds from now (default: 60).
  * @property {number | bigint} [transferMaxFee] - The maximum allowed fee in octas for transfer operations.
+ * @property {number | bigint} [transactionMaxFee] - The maximum allowed fee in octas for sendTransaction and signTransaction operations.
  */
 
 /**
