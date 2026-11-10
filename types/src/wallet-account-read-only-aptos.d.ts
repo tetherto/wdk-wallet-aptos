@@ -249,11 +249,11 @@ export type AptosWalletConfig = {
      */
     txnExpirationSecs?: number;
     /**
-     * - The maximum allowed fee in octas for transfer operations (default: 10_000_000, 0.1 APT).
+     * - The maximum allowed fee in octas for transfer operations.
      */
     transferMaxFee?: number | bigint;
     /**
-     * - The maximum allowed fee in octas for sendTransaction and signTransaction operations (default: 10_000_000, 0.1 APT).
+     * - The maximum allowed fee in octas for sendTransaction and signTransaction operations.
      */
     transactionMaxFee?: number | bigint;
 };

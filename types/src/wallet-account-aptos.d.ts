@@ -53,6 +53,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {AptosTransaction} tx - The native APT transaction to sign.
      * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
+     * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      */
     signTransaction(tx: AptosTransaction): Promise<SignedTransaction>;
     /**
@@ -60,6 +61,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {AptosTransaction} tx - The transaction.
      * @returns {Promise<TransactionResult>} The transaction's result.
+     * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
      */
     sendTransaction(tx: AptosTransaction): Promise<TransactionResult>;
     /**
@@ -67,6 +69,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @param {TransferOptions} options - The transfer's options.
      * @returns {Promise<TransferResult>} The transfer's result.
+     * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
      */
     transfer(options: TransferOptions): Promise<TransferResult>;
     /**
@@ -92,12 +95,14 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
     /**
      * Simulates a payload once and signs it, deriving `max_gas_amount` from the
      * simulated usage (with a safety buffer) and `gas_unit_price` from the same
-     * simulation. Enforces a maximum fee.
+     * simulation. Optionally enforces a maximum fee.
      *
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
+     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+     * @param {'transaction' | 'transfer'} operation - The operation, used in the error message.
      * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
+     * @throws {MaximumFeeExceededError} If the estimated fee exceeds the maximum fee.
      */
     private _buildSignedTransaction;
     /**
@@ -105,7 +110,8 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos imple
      *
      * @private
      * @param {EntryFunctionPayload} payload - The payload descriptor.
-     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
+     * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+     * @param {'transaction' | 'transfer'} operation - The operation, used in the error message.
      * @returns {Promise<TransactionResult>} The transaction's result.
      */
     private _submit;

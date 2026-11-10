@@ -162,6 +162,17 @@ describe('WalletAccountAptos', () => {
 
       await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
         .rejects.toThrow(MaximumFeeExceededError)
+      await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
+        .rejects.toThrow('Exceeded maximum fee cost for transfer operation.')
+    })
+
+    it('allows a fee exactly equal to transferMaxFee', async () => {
+      account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transferMaxFee: 10000n })
+      mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xdeadbeef' }) // fee = 10000
+
+      const result = await account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n })
+
+      expect(result.hash).toBe('0xdeadbeef')
     })
 
     it('caps max_gas_amount so the worst-case fee cannot exceed transferMaxFee', async () => {
@@ -303,14 +314,23 @@ describe('WalletAccountAptos', () => {
         mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
 
         await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
+        await expect(account.sendTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
         expect(submitted).toBe(false)
+      })
+
+      it('allows a fee exactly equal to it in sendTransaction and signTransaction', async () => {
+        account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10000n })
+        mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' }) // fee = 10000
+
+        await expect(account.signTransaction(TX)).resolves.toBeDefined()
+        await expect(account.sendTransaction(TX)).resolves.toMatchObject({ hash: '0xfeed' })
       })
 
       it('is enforced by signTransaction', async () => {
         account = new WalletAccountAptos(SEED_PHRASE, "0'/0'/0'", { provider: RPC_URL, chainId: 1, transactionMaxFee: 10n })
         mockSimulateAndSubmit({ gasUsed: 100, gasUnitPrice: 100, hash: '0xfeed' })
 
-        await expect(account.signTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
+        await expect(account.signTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
       })
 
       it('caps max_gas_amount so the worst-case fee cannot exceed it', async () => {
@@ -332,40 +352,15 @@ describe('WalletAccountAptos', () => {
       })
     })
 
-    describe('default max fee', () => {
+    describe('without a configured max fee', () => {
       const TX = { to: RECIPIENT, value: 100000n }
 
-      // gas_used 1000 at 100_000 octas per unit costs 100_000_000 octas, above the 0.1 APT default.
-      const EXPENSIVE = { gasUsed: 1000, gasUnitPrice: 100_000, hash: '0xfeed' }
-
-      it('rejects an excessive gas price in sendTransaction', async () => {
-        mockSimulateAndSubmit(EXPENSIVE)
-
-        await expect(account.sendTransaction(TX)).rejects.toThrow(MaximumFeeExceededError)
-        expect(submitted).toBe(false)
-      })
-
-      it('rejects an excessive gas price in signTransaction', async () => {
-        mockSimulateAndSubmit(EXPENSIVE)
-
-        await expect(account.signTransaction(TX)).rejects.toThrow('Exceeded maximum fee cost.')
-      })
-
-      it('rejects an excessive gas price in transfer', async () => {
-        mockSimulateAndSubmit(EXPENSIVE)
-
-        await expect(account.transfer({ token: USDT, recipient: RECIPIENT, amount: 1000000n }))
-          .rejects.toThrow('Exceeded maximum fee cost.')
-        expect(submitted).toBe(false)
-      })
-
-      it('caps max_gas_amount when the simulation reports no gas usage', async () => {
-        // The fallback max_gas_amount (100000) at 1000 octas per unit would allow a 100_000_000 octas fee.
-        mockSimulateAndSubmit({ gasUsed: 0, gasUnitPrice: 1000, hash: '0xfeed' })
+      it('does not cap the fee or max_gas_amount', async () => {
+        mockSimulateAndSubmit({ gasUsed: 1000, gasUnitPrice: 100_000, hash: '0xfeed' })
 
         await account.sendTransaction(TX)
 
-        expect(submittedBody.max_gas_amount).toBe('10000')
+        expect(submittedBody.max_gas_amount).toBe('2000')
       })
     })
   })

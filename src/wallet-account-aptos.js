@@ -80,9 +80,6 @@ const MAX_GAS_BUFFER = 2n
 // (e.g. for an account that cannot cover the fee).
 const DEFAULT_MAX_GAS_AMOUNT = 100000n
 
-// The maximum fee (in octas, 0.1 APT) enforced when no max fee is configured.
-const DEFAULT_MAX_FEE = 10_000_000n
-
 /**
  * Asserts that a user-supplied derivation path is exactly three hardened
  * index segments with no leading zeros (the module prepends m/44'/637', so a
@@ -241,6 +238,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {AptosTransaction} tx - The native APT transaction to sign.
    * @returns {Promise<SignedTransaction>} The signed transaction (JSON form, ready to submit).
+   * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    */
   async signTransaction (tx) {
     if (!this._privateKey) {
@@ -251,7 +249,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       throw new Error('The wallet must be connected to a provider to sign transactions.')
     }
 
-    const { signedTransaction } = await this._buildSignedTransaction(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee)
+    const { signedTransaction } = await this._buildSignedTransaction(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee, 'transaction')
 
     return signedTransaction
   }
@@ -261,6 +259,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {AptosTransaction} tx - The transaction.
    * @returns {Promise<TransactionResult>} The transaction's result.
+   * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    */
   async sendTransaction (tx) {
     if (!this._privateKey) {
@@ -271,7 +270,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
       throw new Error('The wallet must be connected to a provider to send transactions.')
     }
 
-    return this._submit(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee)
+    return this._submit(this._buildNativeTransferPayload(tx.to, tx.value), this._config.transactionMaxFee, 'transaction')
   }
 
   /**
@@ -279,6 +278,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @param {TransferOptions} options - The transfer's options.
    * @returns {Promise<TransferResult>} The transfer's result.
+   * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
    */
   async transfer (options) {
     if (!this._privateKey) {
@@ -291,7 +291,7 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
 
     const payload = this._buildFungibleAssetTransferPayload(options.token, options.recipient, options.amount)
 
-    return this._submit(payload, this._config.transferMaxFee)
+    return this._submit(payload, this._config.transferMaxFee, 'transfer')
   }
 
   /**
@@ -364,31 +364,32 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
   /**
    * Simulates a payload once and signs it, deriving `max_gas_amount` from the
    * simulated usage (with a safety buffer) and `gas_unit_price` from the same
-   * simulation. Enforces a maximum fee.
+   * simulation. Optionally enforces a maximum fee.
    *
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
+   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+   * @param {'transaction' | 'transfer'} operation - The operation, used in the error message.
    * @returns {Promise<SignedTransactionResult>} The signed transaction and its estimated fee.
    * @throws {MaximumFeeExceededError} If the estimated fee exceeds the maximum fee.
    */
-  async _buildSignedTransaction (payload, maxFee = DEFAULT_MAX_FEE) {
+  async _buildSignedTransaction (payload, maxFee, operation) {
     const simulation = await this._simulate(payload)
     const gasUsed = BigInt(simulation.gas_used)
     const gasUnitPrice = BigInt(simulation.gas_unit_price)
     const fee = gasUsed * gasUnitPrice
 
-    if (fee >= BigInt(maxFee)) {
-      throw new MaximumFeeExceededError('Exceeded maximum fee cost.')
+    if (maxFee !== undefined && fee > BigInt(maxFee)) {
+      throw new MaximumFeeExceededError(`Exceeded maximum fee cost for ${operation} operation.`)
     }
 
     let maxGasAmount = gasUsed > 0n ? gasUsed * MAX_GAS_BUFFER : DEFAULT_MAX_GAS_AMOUNT
 
     // The buffered max_gas_amount could let the on-chain fee reach
     // maxGasAmount * gasUnitPrice, which may exceed maxFee even though the
-    // simulated fee did not. Cap max_gas_amount so the worst-case fee cannot
-    // exceed it.
-    if (gasUnitPrice > 0n) {
+    // simulated fee did not. When a maxFee is set, cap max_gas_amount so the
+    // worst-case fee cannot exceed it.
+    if (maxFee !== undefined && gasUnitPrice > 0n) {
       const maxGasForFee = BigInt(maxFee) / gasUnitPrice
       if (maxGasForFee < maxGasAmount) {
         maxGasAmount = maxGasForFee
@@ -405,11 +406,12 @@ export default class WalletAccountAptos extends WalletAccountReadOnlyAptos {
    *
    * @private
    * @param {EntryFunctionPayload} payload - The payload descriptor.
-   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas (default: 0.1 APT).
+   * @param {number | bigint} [maxFee] - The maximum allowed fee in octas.
+   * @param {'transaction' | 'transfer'} operation - The operation, used in the error message.
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
-  async _submit (payload, maxFee) {
-    const { signedTransaction, fee } = await this._buildSignedTransaction(payload, maxFee)
+  async _submit (payload, maxFee, operation) {
+    const { signedTransaction, fee } = await this._buildSignedTransaction(payload, maxFee, operation)
     const { hash } = await this._rpc.submitTransaction(signedTransaction)
 
     return { hash, fee }
